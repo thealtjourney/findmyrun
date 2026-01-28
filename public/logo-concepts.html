@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find My Run - Logo Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f8f8;
+      padding: 40px;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 40px; }
+
+    /* Colour Palette */
+    :root {
+      --coral: #FF6B5B;
+      --coral-dark: #E55A4A;
+      --coral-light: #FF8577;
+      --salmon: #FA8072;
+      --peach: #FFAB9F;
+      --cream: #FFF5F3;
+      --white: #FFFFFF;
+      --charcoal: #2D2D2D;
+      --gray: #6B7280;
+    }
+
+    .section { margin-bottom: 60px; }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #999;
+      margin-bottom: 20px;
+    }
+
+    /* Colour Swatches */
+    .swatches {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 100px;
+      height: 100px;
+      border-radius: 16px;
+      display: flex;
+      align-items: flex-end;
+      padding: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .swatch.coral { background: var(--coral); color: white; }
+    .swatch.coral-dark { background: var(--coral-dark); color: white; }
+    .swatch.salmon { background: var(--salmon); color: white; }
+    .swatch.peach { background: var(--peach); color: var(--charcoal); }
+    .swatch.cream { background: var(--cream); color: var(--charcoal); border: 1px solid #eee; }
+    .swatch.charcoal { background: var(--charcoal); color: white; }
+
+    /* Logo Grid */
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .logo-card {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .logo-card.dark {
+      background: var(--charcoal);
+    }
+    .logo-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #999;
+      margin-top: 20px;
+    }
+    .logo-card.dark h3 { color: #888; }
+
+    /* SVG Logos */
+    .logo-svg {
+      height: 60px;
+      width: auto;
+    }
+    .logo-svg.large {
+      height: 80px;
+    }
+
+    /* Header Preview */
+    .header-preview {
+      background: white;
+      border-radius: 20px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-logo {
+      width: 44px;
+      height: 44px;
+    }
+    .header-text h2 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--charcoal);
+    }
+    .header-text p {
+      font-size: 11px;
+      color: #999;
+    }
+    .header-btn {
+      background: var(--coral);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+    }
+
+    .tag {
+      display: inline-block;
+      background: var(--cream);
+      color: var(--coral);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Find My Run — Brand Concepts</h1>
+  <p class="subtitle">Fresh & energetic • Coral/Salmon + White</p>
+
+  <!-- Colour Palette -->
+  <div class="section">
+    <p class="section-title">Colour Palette</p>
+    <div class="swatches">
+      <div class="swatch coral">Coral<br>#FF6B5B</div>
+      <div class="swatch coral-dark">Coral Dark<br>#E55A4A</div>
+      <div class="swatch salmon">Salmon<br>#FA8072</div>
+      <div class="swatch peach">Peach<br>#FFAB9F</div>
+      <div class="swatch cream">Cream<br>#FFF5F3</div>
+      <div class="swatch charcoal">Charcoal<br>#2D2D2D</div>
+    </div>
+  </div>
+
+  <!-- Logo Concepts -->
+  <div class="section">
+    <p class="section-title">Logo Concepts</p>
+    <div class="logo-grid">
+
+      <!-- Option 1: FMR Monogram Bold -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <text x="0" y="48" font-family="Inter, sans-serif" font-size="52" font-weight="900" fill="#FF6B5B">FMR</text>
+        </svg>
+        <h3>Option 1: FMR Bold</h3>
+        <span class="tag">Simple & Strong</span>
+      </div>
+
+      <!-- Option 2: FMR with running figure -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 160 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Running figure incorporated into F -->
+          <circle cx="18" cy="12" r="6" fill="#FF6B5B"/>
+          <path d="M8 52 L18 30 L28 38 L38 24 L32 52" stroke="#FF6B5B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <text x="48" y="48" font-family="Inter, sans-serif" font-size="44" font-weight="800" fill="#2D2D2D">MR</text>
+        </svg>
+        <h3>Option 2: Running Figure + MR</h3>
+        <span class="tag">Dynamic & Playful</span>
+      </div>
+
+      <!-- Option 3: Pin Icon -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Map pin with runner inside -->
+          <path d="M24 4C14 4 6 12 6 22C6 34 24 52 24 52C24 52 42 34 42 22C42 12 34 4 24 4Z" fill="#FF6B5B"/>
+          <circle cx="24" cy="20" r="8" fill="white"/>
+          <circle cx="24" cy="17" r="3" fill="#FF6B5B"/>
+          <path d="M20 30 L24 22 L28 26" stroke="#FF6B5B" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <text x="52" y="40" font-family="Inter, sans-serif" font-size="28" font-weight="800" fill="#2D2D2D">findmyrun</text>
+        </svg>
+        <h3>Option 3: Pin Icon + Wordmark</h3>
+        <span class="tag">Location Focused</span>
+      </div>
+
+      <!-- Option 4: Circular badge -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="35" cy="35" r="33" fill="#FF6B5B"/>
+          <text x="35" y="44" font-family="Inter, sans-serif" font-size="26" font-weight="900" fill="white" text-anchor="middle">FMR</text>
+        </svg>
+        <h3>Option 4: Circle Badge</h3>
+        <span class="tag">App Icon Ready</span>
+      </div>
+
+      <!-- Option 5: Rounded square with pin -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="56" height="56" rx="14" fill="#FF6B5B"/>
+          <!-- Stylized pin/route -->
+          <circle cx="30" cy="22" r="8" fill="white"/>
+          <path d="M30 30 L30 48" stroke="white" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="30" cy="22" r="4" fill="#FF6B5B"/>
+        </svg>
+        <h3>Option 5: Pin App Icon</h3>
+        <span class="tag">Clean & Modern</span>
+      </div>
+
+      <!-- Option 6: Route/path logo -->
+      <div class="logo-card">
+        <svg class="logo-svg large" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Winding route path -->
+          <path d="M8 45 Q20 20 32 35 Q44 50 56 30" stroke="#FF6B5B" stroke-width="6" stroke-linecap="round" fill="none"/>
+          <circle cx="8" cy="45" r="5" fill="#FF6B5B"/>
+          <circle cx="56" cy="30" r="5" fill="#2D2D2D"/>
+          <text x="72" y="42" font-family="Inter, sans-serif" font-size="26" font-weight="800" fill="#2D2D2D">findmyrun</text>
+        </svg>
+        <h3>Option 6: Route Path</h3>
+        <span class="tag">Journey Focused</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Header Previews -->
+  <div class="section">
+    <p class="section-title">Header Previews</p>
+
+    <!-- Preview 1 -->
+    <div class="header-preview">
+      <div class="header-left">
+        <svg class="header-logo" viewBox="0 0 60 60" fill="none">
+          <rect width="60" height="60" rx="14" fill="#FF6B5B"/>
+          <text x="30" y="40" font-family="Inter, sans-serif" font-size="24" font-weight="900" fill="white" text-anchor="middle">FMR</text>
+        </svg>
+        <div class="header-text">
+          <h2>FIND MY RUN</h2>
+          <p>Discover local run clubs</p>
+        </div>
+      </div>
+      <button class="header-btn">Add Club</button>
+    </div>
+
+    <!-- Preview 2 -->
+    <div class="header-preview">
+      <div class="header-left">
+        <svg class="header-logo" viewBox="0 0 60 60" fill="none">
+          <circle cx="30" cy="30" r="28" fill="#FF6B5B"/>
+          <circle cx="30" cy="22" r="8" fill="white"/>
+          <path d="M30 30 L30 46" stroke="white" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="30" cy="22" r="4" fill="#FF6B5B"/>
+        </svg>
+        <div class="header-text">
+          <h2>findmyrun</h2>
+          <p>72 clubs across the UK</p>
+        </div>
+      </div>
+      <button class="header-btn">Add Club</button>
+    </div>
+
+    <!-- Preview 3 with route -->
+    <div class="header-preview">
+      <div class="header-left">
+        <svg class="header-logo" viewBox="0 0 60 60" fill="none">
+          <rect width="60" height="60" rx="14" fill="#FFF5F3"/>
+          <path d="M15 40 Q25 15 35 32 Q45 48 50 25" stroke="#FF6B5B" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <circle cx="15" cy="40" r="4" fill="#FF6B5B"/>
+          <circle cx="50" cy="25" r="4" fill="#2D2D2D"/>
+        </svg>
+        <div class="header-text">
+          <h2>findmyrun</h2>
+          <p>Run clubs near you</p>
+        </div>
+      </div>
+      <button class="header-btn">Add Club</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Which direction do you like?</p>
+    <p style="color: #666; line-height: 1.6;">
+      Let me know which logo style speaks to you (or elements from different options you'd like to combine),
+      and I'll apply it to the full site with the coral/white colour scheme!
+    </p>
+  </div>
+
+</body>
+</html>
