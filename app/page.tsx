@@ -1,9 +1,33 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users } from 'lucide-react';
 import { seedClubs, cities, Club } from '@/lib/seed-data';
+
+// Helper to get/create visitor ID for attendance tracking
+function getVisitorId(): string {
+  if (typeof window === 'undefined') return '';
+  let visitorId = localStorage.getItem('fmr_visitor_id');
+  if (!visitorId) {
+    visitorId = 'v_' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('fmr_visitor_id', visitorId);
+  }
+  return visitorId;
+}
+
+// Helper to get next session date for a club
+function getNextSessionDate(day: string): string {
+  const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(day);
+  const today = new Date();
+  const todayIndex = today.getDay();
+  let daysUntil = dayIndex - todayIndex;
+  if (daysUntil < 0) daysUntil += 7;
+  if (daysUntil === 0 && today.getHours() >= 20) daysUntil = 7; // If it's late, show next week
+  const nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + daysUntil);
+  return nextDate.toISOString().split('T')[0];
+}
 
 // Brand colours
 const colors = {
@@ -42,7 +66,7 @@ const terrainConfig = {
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // Club Card Component
-function ClubCard({ club, onClick }: { club: Club; onClick: () => void }) {
+function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () => void; attendanceCount?: number }) {
   const pace = paceConfig[club.pace];
   return (
     <button
@@ -63,9 +87,16 @@ function ClubCard({ club, onClick }: { club: Club; onClick: () => void }) {
             </span>
           )}
         </div>
-        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${pace.color}`}>
-          {pace.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {attendanceCount && attendanceCount > 0 && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-200">
+              <Users className="w-3 h-3" /> {attendanceCount} going
+            </span>
+          )}
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${pace.color}`}>
+            {pace.label}
+          </span>
+        </div>
       </div>
 
       <p className="text-sm text-gray-500 flex items-center gap-1.5 mb-3">
@@ -114,8 +145,60 @@ function ClubCard({ club, onClick }: { club: Club; onClick: () => void }) {
 }
 
 // Club Detail Modal
-function ClubDetail({ club, onClose }: { club: Club; onClose: () => void }) {
+function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate }: {
+  club: Club;
+  onClose: () => void;
+  attendanceCount?: number;
+  onAttendanceUpdate?: () => void;
+}) {
   const pace = paceConfig[club.pace];
+  const [isGoing, setIsGoing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [localCount, setLocalCount] = useState(attendanceCount || 0);
+
+  // Check if user already marked as going (from localStorage)
+  useEffect(() => {
+    const goingClubs = JSON.parse(localStorage.getItem('fmr_going') || '{}');
+    const sessionDate = getNextSessionDate(club.day);
+    const key = `${club.name}_${sessionDate}`;
+    setIsGoing(!!goingClubs[key]);
+  }, [club.name, club.day]);
+
+  const handleImGoing = async () => {
+    if (isGoing || isLoading) return;
+    setIsLoading(true);
+
+    const sessionDate = getNextSessionDate(club.day);
+    const visitorId = getVisitorId();
+
+    try {
+      const response = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clubName: club.name,
+          sessionDate,
+          visitorId,
+        }),
+      });
+
+      if (response.ok) {
+        setIsGoing(true);
+        setLocalCount(prev => prev + 1);
+
+        // Save to localStorage
+        const goingClubs = JSON.parse(localStorage.getItem('fmr_going') || '{}');
+        goingClubs[`${club.name}_${sessionDate}`] = true;
+        localStorage.setItem('fmr_going', JSON.stringify(goingClubs));
+
+        onAttendanceUpdate?.();
+      }
+    } catch (error) {
+      console.error('Failed to record attendance:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -141,6 +224,12 @@ function ClubDetail({ club, onClose }: { club: Club; onClose: () => void }) {
             <MapPin className="w-4 h-4" />
             {club.area}, {club.city}
           </p>
+          {localCount > 0 && (
+            <p className="text-white/90 flex items-center gap-1 mt-2 text-sm">
+              <Users className="w-4 h-4" />
+              {localCount} runner{localCount !== 1 ? 's' : ''} going this week
+            </p>
+          )}
         </div>
 
         <div className="p-6">
@@ -212,8 +301,28 @@ function ClubDetail({ club, onClose }: { club: Club; onClose: () => void }) {
           </div>
 
           <div className="flex gap-3">
-            <button className="flex-1 bg-[#FF6B5B] text-white py-3.5 rounded-xl font-bold hover:bg-[#E55A4A] transition-all shadow-lg shadow-[#FF6B5B]/25">
-              I&apos;m coming this week
+            <button
+              onClick={handleImGoing}
+              disabled={isGoing || isLoading}
+              className={`flex-1 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                isGoing
+                  ? 'bg-green-500 text-white'
+                  : 'bg-[#FF6B5B] text-white hover:bg-[#E55A4A] shadow-lg shadow-[#FF6B5B]/25'
+              }`}
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : isGoing ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  You&apos;re going!
+                </>
+              ) : (
+                <>
+                  <Users className="w-5 h-5" />
+                  I&apos;m coming this week
+                </>
+              )}
             </button>
             <button className="px-4 py-3.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
               <Heart className="w-5 h-5 text-gray-400" />
@@ -309,6 +418,24 @@ export default function Home() {
   const [filterInfluencer, setFilterInfluencer] = useState(false);
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
+
+  // Fetch attendance counts
+  const fetchAttendance = useCallback(async () => {
+    try {
+      const response = await fetch('/api/attendance');
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceCounts(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   const filteredClubs = useMemo(() => {
     return seedClubs.filter(club => {
@@ -491,7 +618,12 @@ export default function Home() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               {filteredClubs.map(club => (
-                <ClubCard key={club.name} club={club} onClick={() => setSelectedClub(club)} />
+                <ClubCard
+                  key={club.name}
+                  club={club}
+                  onClick={() => setSelectedClub(club)}
+                  attendanceCount={attendanceCounts[club.name]}
+                />
               ))}
             </div>
 
@@ -546,7 +678,14 @@ export default function Home() {
       </div>
 
       {/* Modal */}
-      {selectedClub && <ClubDetail club={selectedClub} onClose={() => setSelectedClub(null)} />}
+      {selectedClub && (
+        <ClubDetail
+          club={selectedClub}
+          onClose={() => setSelectedClub(null)}
+          attendanceCount={attendanceCounts[selectedClub.name]}
+          onAttendanceUpdate={fetchAttendance}
+        />
+      )}
     </div>
   );
 }
