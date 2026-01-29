@@ -47,7 +47,7 @@ export async function sendSubmissionEmail(submission: SubmissionEmailData, appro
   ].filter(Boolean).join(' • ') || 'None specified';
 
   const { error } = await resend.emails.send({
-    from: 'Find My Run <submissions@findmyrun.co.uk>',
+    from: 'Find My Run <submissions@findmyrun.club>',
     to: adminEmail,
     subject: `🏃 New Club Submission: ${submission.name}`,
     html: `
@@ -168,7 +168,7 @@ export async function sendApprovalNotification(submitterEmail: string, clubName:
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   await resend.emails.send({
-    from: 'Find My Run <hello@findmyrun.co.uk>',
+    from: 'Find My Run <hello@findmyrun.club>',
     to: submitterEmail,
     subject: `🎉 ${clubName} is now live on Find My Run!`,
     html: `
