@@ -19,14 +19,19 @@ export interface Club {
   meeting_point: string;
   description: string | null;
   pace: 'slow' | 'mixed' | 'fast';
+  terrain: 'road' | 'trail' | 'mixed' | null;
   beginner_friendly: boolean;
   dog_friendly: boolean;
+  female_only: boolean;
   post_run: string | null;
   instagram: string | null;
   strava_url: string | null;
   website: string | null;
+  contact_email: string | null;
   verified: boolean;
+  status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  updated_at: string;
 }
 
 export interface ClubSubmission {
@@ -39,8 +44,10 @@ export interface ClubSubmission {
   meeting_point: string;
   description: string;
   pace: 'slow' | 'mixed' | 'fast';
+  terrain: 'road' | 'trail' | 'mixed' | null;
   beginner_friendly: boolean;
   dog_friendly: boolean;
+  female_only: boolean;
   post_run: string;
   instagram: string;
   website: string;
