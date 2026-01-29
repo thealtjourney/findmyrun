@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Send, CheckCircle, Instagram, Globe, Mail } from 'lucide-react';
+import { ukCities } from '@/lib/uk-cities';
 
 // Logo component (same as main page)
 function Logo({ className = "w-10 h-10" }: { className?: string }) {
@@ -16,11 +17,7 @@ function Logo({ className = "w-10 h-10" }: { className?: string }) {
   );
 }
 
-const cities = [
-  'Manchester', 'London', 'Birmingham', 'Leeds', 'Bristol',
-  'Edinburgh', 'Glasgow', 'Liverpool', 'Sheffield', 'Newcastle',
-  'Nottingham', 'Brighton', 'Oxford', 'Cambridge', 'Cardiff', 'Other'
-];
+const cities = ukCities; // 140+ UK cities and major towns
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
