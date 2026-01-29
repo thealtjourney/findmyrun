@@ -2,6 +2,13 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+export interface SessionData {
+  day: string;
+  time: string;
+  distance?: string;
+  type?: string;
+}
+
 export interface SubmissionEmailData {
   id: string;
   name: string;
@@ -21,6 +28,7 @@ export interface SubmissionEmailData {
   website: string;
   submitter_email: string;
   submitter_name?: string;
+  sessions?: SessionData[];
 }
 
 export async function sendSubmissionEmail(submission: SubmissionEmailData, approveToken: string, rejectToken: string) {
@@ -45,6 +53,31 @@ export async function sendSubmissionEmail(submission: SubmissionEmailData, appro
     submission.dog_friendly && '🐕 Dog friendly',
     submission.female_only && '👩 Women only',
   ].filter(Boolean).join(' • ') || 'None specified';
+
+  const sessionTypeLabels: Record<string, string> = {
+    '': 'Regular run',
+    'social': 'Social run',
+    'long': 'Long run',
+    'track': 'Track session',
+    'intervals': 'Intervals / Speed',
+    'tempo': 'Tempo run',
+    'trail': 'Trail run',
+  };
+
+  // Generate sessions HTML - use sessions array if available, otherwise fall back to single session
+  const sessions = submission.sessions && submission.sessions.length > 0
+    ? submission.sessions
+    : [{ day: submission.day, time: submission.time, distance: submission.distance, type: '' }];
+
+  const sessionsHtml = sessions.map((session, index) => `
+    <div style="background: #f9fafb; border-radius: 12px; padding: 16px; ${index > 0 ? 'margin-top: 12px;' : ''}">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-size: 14px; font-weight: 700; color: #1f2937;">${session.day}s at ${session.time}</span>
+        ${session.type ? `<span style="background: #FF6B5B; color: white; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">${sessionTypeLabels[session.type] || session.type}</span>` : ''}
+      </div>
+      ${session.distance ? `<p style="margin: 0; font-size: 13px; color: #6b7280;">Distance: ${session.distance}</p>` : ''}
+    </div>
+  `).join('');
 
   const { error } = await resend.emails.send({
     from: 'Find My Run <submissions@findmyrun.club>',
@@ -71,20 +104,10 @@ export async function sendSubmissionEmail(submission: SubmissionEmailData, appro
               <h2 style="color: #1f2937; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">${submission.name}</h2>
               <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 14px;">📍 ${submission.area}, ${submission.city}</p>
 
-              <!-- Key Info Grid -->
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px;">
-                <div style="background: #f9fafb; border-radius: 12px; padding: 16px; text-align: center;">
-                  <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${submission.day}s</p>
-                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280; text-transform: uppercase;">Day</p>
-                </div>
-                <div style="background: #f9fafb; border-radius: 12px; padding: 16px; text-align: center;">
-                  <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${submission.time}</p>
-                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280; text-transform: uppercase;">Time</p>
-                </div>
-                <div style="background: #f9fafb; border-radius: 12px; padding: 16px; text-align: center;">
-                  <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">${submission.distance || '?'}</p>
-                  <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280; text-transform: uppercase;">Distance</p>
-                </div>
+              <!-- Sessions -->
+              <div style="margin-bottom: 24px;">
+                <p style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Sessions (${sessions.length})</p>
+                ${sessionsHtml}
               </div>
 
               <!-- Details -->

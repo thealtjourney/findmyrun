@@ -51,16 +51,20 @@ export async function GET(
       submission.city
     );
 
-    // Create the club entry
+    // Parse sessions from submission
+    const sessions = submission.sessions || [];
+    const primarySession = sessions.length > 0 ? sessions[0] : { day: submission.day, time: submission.time, distance: submission.distance };
+
+    // Create the club entry (using primary session for backward compatibility)
     const clubData = {
       name: submission.name,
       city: submission.city,
       area: submission.area,
       lat,
       lng,
-      day: submission.day,
-      time: submission.time,
-      distance: submission.distance,
+      day: primarySession.day || submission.day,
+      time: primarySession.time || submission.time,
+      distance: primarySession.distance || submission.distance,
       meeting_point: submission.meeting_point,
       description: submission.description,
       pace: submission.pace || 'mixed',
@@ -83,6 +87,27 @@ export async function GET(
     if (insertError) {
       console.error('Error creating club:', insertError);
       return NextResponse.redirect(`${appUrl}/submission-result?status=error&message=Failed%20to%20create%20club`);
+    }
+
+    // Create session entries for multi-session support
+    if (sessions.length > 0) {
+      const sessionEntries = sessions.map((session: { day: string; time: string; distance?: string; type?: string }) => ({
+        club_name: submission.name,
+        day: session.day,
+        time: session.time,
+        distance: session.distance || null,
+        meeting_point: submission.meeting_point,
+        session_type: session.type || null,
+      }));
+
+      const { error: sessionError } = await supabase
+        .from('sessions')
+        .insert(sessionEntries);
+
+      if (sessionError) {
+        console.error('Error creating sessions:', sessionError);
+        // Don't fail the approval if sessions fail - club is already created
+      }
     }
 
     // Update submission status

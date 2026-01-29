@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Send, CheckCircle, Instagram, Globe, Mail } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, Instagram, Globe, Mail, Plus, Trash2, Calendar } from 'lucide-react';
 import { ukCities } from '@/lib/uk-cities';
 
 // Logo component (same as main page)
@@ -17,14 +17,55 @@ function Logo({ className = "w-10 h-10" }: { className?: string }) {
   );
 }
 
-const cities = ukCities; // 140+ UK cities and major towns
-
+const cities = ukCities;
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const sessionTypes = [
+  { value: '', label: 'Regular run' },
+  { value: 'social', label: 'Social run' },
+  { value: 'long', label: 'Long run' },
+  { value: 'track', label: 'Track session' },
+  { value: 'intervals', label: 'Intervals / Speed' },
+  { value: 'tempo', label: 'Tempo run' },
+  { value: 'trail', label: 'Trail run' },
+];
+
+interface Session {
+  id: string;
+  day: string;
+  time: string;
+  distance: string;
+  type: string;
+}
 
 export default function SubmitClub() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [sessions, setSessions] = useState<Session[]>([
+    { id: '1', day: '', time: '', distance: '', type: '' }
+  ]);
+
+  const addSession = () => {
+    if (sessions.length >= 5) return; // Max 5 sessions
+    setSessions([...sessions, {
+      id: Date.now().toString(),
+      day: '',
+      time: '',
+      distance: '',
+      type: ''
+    }]);
+  };
+
+  const removeSession = (id: string) => {
+    if (sessions.length <= 1) return; // Keep at least one
+    setSessions(sessions.filter(s => s.id !== id));
+  };
+
+  const updateSession = (id: string, field: keyof Session, value: string) => {
+    setSessions(sessions.map(s =>
+      s.id === id ? { ...s, [field]: value } : s
+    ));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,11 +75,26 @@ export default function SubmitClub() {
     const form = e.currentTarget;
     const formData = new FormData(form);
 
+    // Validate sessions
+    const validSessions = sessions.filter(s => s.day && s.time);
+    if (validSessions.length === 0) {
+      setError('Please add at least one session with day and time.');
+      setIsSubmitting(false);
+      return;
+    }
+
     // Build JSON payload from form data
-    const payload: Record<string, string | boolean> = {};
+    const payload: Record<string, unknown> = {};
     formData.forEach((value, key) => {
       payload[key] = value.toString();
     });
+
+    // Add sessions to payload
+    payload.sessions = validSessions;
+    // Use first session as the primary day/time for backward compatibility
+    payload.day = validSessions[0].day;
+    payload.time = validSessions[0].time;
+    payload.distance = validSessions[0].distance;
 
     try {
       const response = await fetch('/api/submissions', {
@@ -56,7 +112,7 @@ export default function SubmitClub() {
       } else {
         setError(data.error || 'Something went wrong. Please try again.');
       }
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.');
     }
 
@@ -72,7 +128,7 @@ export default function SubmitClub() {
           </div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">Thanks for submitting!</h1>
           <p className="text-gray-600 mb-6">
-            We'll review your club and add it to the site within 24-48 hours.
+            We&apos;ll review your club and add it to the site within 24-48 hours.
             We may reach out if we need any extra details.
           </p>
           <Link
@@ -116,7 +172,7 @@ export default function SubmitClub() {
           <div className="mb-8">
             <h1 className="text-2xl font-black text-gray-900 mb-2">Add your run club</h1>
             <p className="text-gray-600">
-              Get your club listed for free. We'll review submissions and add them within 24-48 hours.
+              Get your club listed for free. We&apos;ll review submissions and add them within 24-48 hours.
             </p>
           </div>
 
@@ -175,48 +231,103 @@ export default function SubmitClub() {
               </div>
             </div>
 
-            {/* Day & Time */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Main run day *
+            {/* Sessions Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Run sessions *
                 </label>
-                <select
-                  name="day"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
-                >
-                  <option value="">Select day</option>
-                  {days.map(day => (
-                    <option key={day} value={day}>{day}</option>
-                  ))}
-                </select>
+                <span className="text-xs text-gray-500">
+                  {sessions.length === 1 ? '1 session' : `${sessions.length} sessions`}
+                </span>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Start time *
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B] focus:border-transparent"
-                />
-              </div>
-            </div>
 
-            {/* Distance */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Typical distance *
-              </label>
-              <input
-                type="text"
-                name="distance"
-                required
-                placeholder="e.g. 5km, 5-10km, 8km"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B] focus:border-transparent"
-              />
+              <p className="text-xs text-gray-500 -mt-2">
+                Add all your regular weekly sessions (e.g., Tuesday track + Saturday long run)
+              </p>
+
+              {sessions.map((session, index) => (
+                <div
+                  key={session.id}
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Calendar className="w-4 h-4 text-[#FF6B5B]" />
+                      Session {index + 1}
+                    </div>
+                    {sessions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSession(session.id)}
+                        className="text-gray-400 hover:text-red-500 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Day *</label>
+                      <select
+                        value={session.day}
+                        onChange={(e) => updateSession(session.id, 'day', e.target.value)}
+                        required={index === 0}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
+                      >
+                        <option value="">Select</option>
+                        {days.map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Time *</label>
+                      <input
+                        type="time"
+                        value={session.time}
+                        onChange={(e) => updateSession(session.id, 'time', e.target.value)}
+                        required={index === 0}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Distance</label>
+                      <input
+                        type="text"
+                        value={session.distance}
+                        onChange={(e) => updateSession(session.id, 'distance', e.target.value)}
+                        placeholder="e.g. 5-10km"
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Type</label>
+                      <select
+                        value={session.type}
+                        onChange={(e) => updateSession(session.id, 'type', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
+                      >
+                        {sessionTypes.map(type => (
+                          <option key={type.value} value={type.value}>{type.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {sessions.length < 5 && (
+                <button
+                  type="button"
+                  onClick={addSession}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-[#FF6B5B] hover:text-[#FF6B5B] transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add another session
+                </button>
+              )}
             </div>
 
             {/* Meeting Point */}

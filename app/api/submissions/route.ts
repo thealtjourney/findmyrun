@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       submitter_email: body.contact_email,
       submitter_name: body.submitter_name || null,
       status: 'pending',
+      sessions: body.sessions || [], // Store all sessions as JSONB
     };
 
     // Save to Supabase
