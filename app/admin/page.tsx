@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, RefreshCw, Shield, AlertTriangle, Upload } from 'lucide-react';
+import { ArrowLeft, Trash2, RefreshCw, Shield, AlertTriangle, Upload, Key, Check, X } from 'lucide-react';
 
 interface Club {
   id: string;
@@ -27,15 +27,35 @@ interface Submission {
   submitter_email: string;
 }
 
+interface Claim {
+  id: string;
+  club_id: string;
+  claimant_email: string;
+  claimant_name: string | null;
+  verification_method: 'email' | 'instagram';
+  status: 'pending' | 'verified' | 'rejected';
+  instagram_code: string | null;
+  created_at: string;
+  verified_at: string | null;
+  clubs: {
+    id: string;
+    name: string;
+    city: string;
+    area: string;
+    instagram: string | null;
+  };
+}
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminSecret, setAdminSecret] = useState('');
   const [clubs, setClubs] = useState<Club[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'clubs' | 'submissions'>('clubs');
+  const [activeTab, setActiveTab] = useState<'clubs' | 'submissions' | 'claims'>('clubs');
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   const authenticate = (e: React.FormEvent) => {
@@ -51,12 +71,15 @@ export default function AdminPage() {
     setError('');
 
     try {
-      // Fetch clubs and submissions in parallel
-      const [clubsRes, subsRes] = await Promise.all([
+      // Fetch clubs, submissions, and claims in parallel
+      const [clubsRes, subsRes, claimsRes] = await Promise.all([
         fetch('/api/admin/clubs', {
           headers: { 'Authorization': `Bearer ${secret}` },
         }),
         fetch('/api/admin/submissions', {
+          headers: { 'Authorization': `Bearer ${secret}` },
+        }),
+        fetch('/api/admin/claims', {
           headers: { 'Authorization': `Bearer ${secret}` },
         }),
       ]);
@@ -69,9 +92,11 @@ export default function AdminPage() {
 
       const clubsData = await clubsRes.json();
       const subsData = await subsRes.json();
+      const claimsData = await claimsRes.json();
 
       if (clubsData.clubs) setClubs(clubsData.clubs);
       if (subsData.submissions) setSubmissions(subsData.submissions);
+      if (claimsData.claims) setClaims(claimsData.claims);
     } catch {
       setError('Failed to fetch data');
     }
@@ -308,6 +333,17 @@ export default function AdminPage() {
           >
             Submissions ({submissions.length})
           </button>
+          <button
+            onClick={() => setActiveTab('claims')}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
+              activeTab === 'claims'
+                ? 'bg-[#FF6B5B] text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            <Key className="w-4 h-4" />
+            Claims ({claims.filter(c => c.status === 'pending').length})
+          </button>
         </div>
 
         {/* Clubs Tab */}
@@ -426,6 +462,92 @@ export default function AdminPage() {
                         </>
                       )}
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Claims Tab */}
+        {activeTab === 'claims' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="font-bold text-gray-900">Club Ownership Claims ({claims.length})</h2>
+              <p className="text-sm text-gray-500">Verify Instagram claims or review email verifications</p>
+            </div>
+
+            {claims.length === 0 ? (
+              <div className="px-6 py-12 text-center text-gray-500">
+                No claims yet
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {claims.map((claim) => (
+                  <div
+                    key={claim.id}
+                    className="px-6 py-4 hover:bg-gray-50"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-gray-900">{claim.clubs?.name || 'Unknown Club'}</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            claim.status === 'verified'
+                              ? 'bg-green-100 text-green-700'
+                              : claim.status === 'rejected'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {claim.status}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            claim.verification_method === 'instagram'
+                              ? 'bg-pink-100 text-pink-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {claim.verification_method}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Claimant: <span className="font-medium">{claim.claimant_name || 'Not provided'}</span> ({claim.claimant_email})
+                        </p>
+                        {claim.clubs && (
+                          <p className="text-sm text-gray-500">
+                            {claim.clubs.area}, {claim.clubs.city}
+                            {claim.clubs.instagram && <span> • @{claim.clubs.instagram}</span>}
+                          </p>
+                        )}
+                        {claim.verification_method === 'instagram' && claim.instagram_code && claim.status === 'pending' && (
+                          <div className="mt-2 bg-pink-50 border border-pink-200 rounded-lg px-3 py-2 inline-block">
+                            <p className="text-xs text-pink-600 font-medium">Instagram Code:</p>
+                            <p className="text-lg font-mono font-bold text-pink-700">{claim.instagram_code}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400 mt-2">
+                          Submitted: {new Date(claim.created_at).toLocaleString()}
+                          {claim.verified_at && ` • Verified: ${new Date(claim.verified_at).toLocaleString()}`}
+                        </p>
+                      </div>
+                      {claim.status === 'pending' && (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`/api/admin/claims/${claim.id}/approve?token=${adminSecret}`}
+                            className="flex items-center gap-1 px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600"
+                          >
+                            <Check className="w-4 h-4" />
+                            Approve
+                          </a>
+                          <a
+                            href={`/api/admin/claims/${claim.id}/reject?token=${adminSecret}`}
+                            className="flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600"
+                          >
+                            <X className="w-4 h-4" />
+                            Reject
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -36,6 +36,25 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get('city');
+    const id = searchParams.get('id');
+
+    // If fetching a single club by ID
+    if (id) {
+      const { data: club, error } = await supabase
+        .from('clubs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !club) {
+        return NextResponse.json(
+          { error: 'Club not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(club);
+    }
 
     // Try to fetch from Supabase first
     let query = supabase

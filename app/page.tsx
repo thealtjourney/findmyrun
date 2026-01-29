@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key } from 'lucide-react';
 import { seedClubs, cities, Club } from '@/lib/seed-data';
 
 // Helper to get/create visitor ID for attendance tracking
@@ -299,6 +299,19 @@ function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate }: {
               </a>
             )}
           </div>
+
+          {/* Claim this club link */}
+          {club.id && (
+            <div className="border-t border-gray-100 pt-4 mb-4">
+              <Link
+                href={`/claim/${club.id}`}
+                className="flex items-center justify-center gap-2 text-gray-500 hover:text-[#FF6B5B] text-sm transition-colors"
+              >
+                <Key className="w-4 h-4" />
+                Run this club? Claim ownership
+              </Link>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button
