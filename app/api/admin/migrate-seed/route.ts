@@ -20,8 +20,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Prepare clubs for insertion (add required fields)
-    const clubsToInsert = seedClubs.map((club, index) => ({
+    // Debug: Check seed data loaded
+    console.log('Seed clubs count:', seedClubs.length);
+
+    // Prepare clubs for insertion (only include columns that exist in DB)
+    const clubsToInsert = seedClubs.map((club) => ({
       name: club.name,
       city: club.city,
       area: club.area,
@@ -42,11 +45,9 @@ export async function POST(request: NextRequest) {
       website: club.website,
       verified: club.verified,
       status: 'approved',
-      // Additional fields from seed data
-      influencer_led: club.influencer_led,
-      pace_5k: club.pace_5k || null,
-      pace_10k: club.pace_10k || null,
     }));
+
+    console.log('Clubs to insert:', clubsToInsert.length);
 
     // Check how many clubs already exist
     const { data: existingClubs } = await supabase
@@ -58,11 +59,15 @@ export async function POST(request: NextRequest) {
     // Filter out clubs that already exist
     const newClubs = clubsToInsert.filter(c => !existingNames.has(c.name));
 
+    console.log('Existing clubs:', existingNames.size);
+    console.log('New clubs to insert:', newClubs.length);
+
     if (newClubs.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'All seed clubs already exist in database',
+        message: `All ${seedClubs.length} seed clubs already exist in database`,
         migrated: 0,
+        skipped: existingNames.size,
         total: seedClubs.length,
       });
     }
