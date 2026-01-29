@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key } from 'lucide-react';
-import { seedClubs, cities, Club } from '@/lib/seed-data';
+import { seedClubs as fallbackClubs, cities, Club } from '@/lib/seed-data';
 
 // Helper to get/create visitor ID for attendance tracking
 function getVisitorId(): string {
@@ -432,6 +432,22 @@ export default function Home() {
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
+  const [clubs, setClubs] = useState<Club[]>(fallbackClubs);
+
+  // Fetch clubs from database
+  const fetchClubs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/clubs');
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setClubs(data);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch clubs:', error);
+    }
+  }, []);
 
   // Fetch attendance counts
   const fetchAttendance = useCallback(async () => {
@@ -447,11 +463,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    fetchClubs();
     fetchAttendance();
-  }, [fetchAttendance]);
+  }, [fetchClubs, fetchAttendance]);
 
   const filteredClubs = useMemo(() => {
-    return seedClubs.filter(club => {
+    return clubs.filter(club => {
       if (searchCity !== 'all' && club.city.toLowerCase() !== searchCity.toLowerCase()) return false;
       if (filterPace !== 'all' && club.pace !== filterPace) return false;
       if (filterTerrain !== 'all' && club.terrain !== filterTerrain) return false;
@@ -463,7 +480,7 @@ export default function Home() {
           !club.area.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [searchCity, filterPace, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, searchQuery]);
+  }, [clubs, searchCity, filterPace, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, searchQuery]);
 
   const clearFilters = () => {
     setFilterPace('all');
@@ -669,7 +686,7 @@ export default function Home() {
               >
                 <p className="font-bold text-gray-900 group-hover:text-[#FF6B5B] transition-colors">{city.name}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {seedClubs.filter(c => c.city === city.name).length} clubs
+                  {clubs.filter(c => c.city === city.name).length} clubs
                 </p>
               </Link>
             ))}
