@@ -161,7 +161,8 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMigrationStatus(`✓ Migrated ${data.migrated} clubs (${data.skipped} already existed)`);
+        const debugInfo = data.debug ? ` [seed:${data.debug.seedClubsLoaded}, new:${data.debug.newToInsert}]` : '';
+        setMigrationStatus(`✓ Migrated ${data.migrated} clubs (${data.skipped} already existed)${debugInfo}`);
         // Refresh the clubs list
         fetchData(adminSecret);
       } else {

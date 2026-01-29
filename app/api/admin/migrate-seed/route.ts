@@ -96,6 +96,12 @@ export async function POST(request: NextRequest) {
       migrated: totalInserted,
       skipped: existingNames.size,
       total: seedClubs.length,
+      debug: {
+        seedClubsLoaded: seedClubs.length,
+        clubsPrepared: clubsToInsert.length,
+        existingFound: existingNames.size,
+        newToInsert: newClubs.length,
+      },
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
