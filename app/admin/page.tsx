@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, RefreshCw, Shield, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Trash2, RefreshCw, Shield, AlertTriangle, Upload } from 'lucide-react';
 
 interface Club {
   id: string;
@@ -36,6 +36,7 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'clubs' | 'submissions'>('clubs');
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   const authenticate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +145,35 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const migrateSeedData = async () => {
+    setLoading(true);
+    setMigrationStatus(null);
+    setError('');
+
+    try {
+      const response = await fetch('/api/admin/migrate-seed', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminSecret}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMigrationStatus(`✓ Migrated ${data.migrated} clubs (${data.skipped} already existed)`);
+        // Refresh the clubs list
+        fetchData(adminSecret);
+      } else {
+        setError(data.error || 'Migration failed');
+      }
+    } catch {
+      setError('Migration failed');
+    }
+
+    setLoading(false);
+  };
+
   // Cancel delete confirmation after 5 seconds
   useEffect(() => {
     if (deleteConfirm) {
@@ -214,6 +244,14 @@ export default function AdminPage() {
             </div>
             <div className="flex items-center gap-3">
               <button
+                onClick={migrateSeedData}
+                disabled={loading}
+                className="flex items-center gap-2 bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                Import Seed Data
+              </button>
+              <button
                 onClick={() => fetchData(adminSecret)}
                 disabled={loading}
                 className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm font-medium"
@@ -238,6 +276,12 @@ export default function AdminPage() {
         {error && (
           <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm mb-6">
             {error}
+          </div>
+        )}
+
+        {migrationStatus && (
+          <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl text-sm mb-6">
+            {migrationStatus}
           </div>
         )}
 
@@ -388,11 +432,10 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-sm text-amber-800">
-            <strong>Note:</strong> This only shows clubs in the database (from approved submissions).
-            Seed data clubs are defined in <code className="bg-amber-100 px-1 rounded">lib/clubs.ts</code> and
-            require a code change to remove.
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-blue-800">
+            <strong>Tip:</strong> Click &quot;Import Seed Data&quot; to migrate all 48 seed clubs to the database.
+            Once migrated, you can delete any clubs from this page.
           </p>
         </div>
       </main>

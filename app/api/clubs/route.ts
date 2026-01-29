@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// In production, uncomment and use Supabase:
-// import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { seedClubs } from '@/lib/seed-data';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,16 +17,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // In production, save to Supabase:
-    // const { data, error } = await supabase
-    //   .from('submissions')
-    //   .insert([body])
-    //   .select()
-    //   .single();
-    //
-    // if (error) throw error;
-
-    // For now, just log and return success
     console.log('New club submission:', body);
 
     return NextResponse.json(
@@ -47,23 +37,29 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const city = searchParams.get('city');
 
-    // In production, fetch from Supabase:
-    // let query = supabase
-    //   .from('clubs')
-    //   .select('*')
-    //   .eq('status', 'approved');
-    //
-    // if (city) {
-    //   query = query.ilike('city', city);
-    // }
-    //
-    // const { data, error } = await query;
-    // if (error) throw error;
+    // Try to fetch from Supabase first
+    let query = supabase
+      .from('clubs')
+      .select('*')
+      .eq('status', 'approved');
 
-    // For now, return seed data
-    const { seedClubs } = await import('@/lib/seed-data');
+    if (city) {
+      query = query.ilike('city', city);
+    }
+
+    const { data: dbClubs, error } = await query;
+
+    // If we have database clubs, use those
+    if (!error && dbClubs && dbClubs.length > 0) {
+      return NextResponse.json(dbClubs);
+    }
+
+    // Fall back to seed data if database is empty or has an error
+    if (error) {
+      console.log('Database error, falling back to seed data:', error.message);
+    }
+
     let clubs = seedClubs;
-
     if (city) {
       clubs = clubs.filter(c => c.city.toLowerCase() === city.toLowerCase());
     }
