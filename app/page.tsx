@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays, HeartHandshake } from 'lucide-react';
 import { seedClubs as fallbackClubs, cities, Club } from '@/lib/seed-data';
 
 // Helper to get/create visitor ID for attendance tracking
@@ -64,6 +64,37 @@ const terrainConfig = {
 };
 
 const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Pace ranges in min/km for filtering
+const paceRanges = [
+  { label: 'Any pace', value: 'all', minPace: 0, maxPace: Infinity },
+  { label: '< 4:30/km', value: 'fast', minPace: 0, maxPace: 4.5, description: 'Fast' },
+  { label: '4:30-5:30/km', value: 'moderate', minPace: 4.5, maxPace: 5.5, description: 'Moderate' },
+  { label: '5:30-6:30/km', value: 'steady', minPace: 5.5, maxPace: 6.5, description: 'Steady' },
+  { label: '6:30-7:30/km', value: 'relaxed', minPace: 6.5, maxPace: 7.5, description: 'Relaxed' },
+  { label: '> 7:30/km', value: 'easy', minPace: 7.5, maxPace: Infinity, description: 'Easy' },
+];
+
+// Helper to convert 5k time string to min/km pace
+function getPaceFromClub(club: Club): number | null {
+  // Use pace_5k if available, otherwise estimate from pace category
+  if (club.pace_5k) {
+    // Parse strings like "25-30 mins" or "sub-20"
+    const match = club.pace_5k.match(/(\d+)/);
+    if (match) {
+      const minutes = parseInt(match[1]);
+      // Convert 5k time to min/km (divide by 5)
+      return minutes / 5;
+    }
+  }
+  // Fallback to pace category
+  switch (club.pace) {
+    case 'fast': return 4.5;
+    case 'mixed': return 5.5;
+    case 'slow': return 7;
+    default: return null;
+  }
+}
 
 // Club Card Component
 function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () => void; attendanceCount?: number }) {
@@ -424,6 +455,8 @@ export default function Home() {
   const [view, setView] = useState<'discover' | 'thisweek'>('discover');
   const [searchCity, setSearchCity] = useState('all');
   const [filterPace, setFilterPace] = useState('all');
+  const [filterPaceKm, setFilterPaceKm] = useState('all');
+  const [filterDay, setFilterDay] = useState('all');
   const [filterTerrain, setFilterTerrain] = useState('all');
   const [filterBeginner, setFilterBeginner] = useState(false);
   const [filterDog, setFilterDog] = useState(false);
@@ -471,6 +504,17 @@ export default function Home() {
     return clubs.filter(club => {
       if (searchCity !== 'all' && club.city.toLowerCase() !== searchCity.toLowerCase()) return false;
       if (filterPace !== 'all' && club.pace !== filterPace) return false;
+      if (filterDay !== 'all' && club.day !== filterDay) return false;
+      // Min/km pace filter
+      if (filterPaceKm !== 'all') {
+        const paceRange = paceRanges.find(p => p.value === filterPaceKm);
+        if (paceRange) {
+          const clubPace = getPaceFromClub(club);
+          if (clubPace === null || clubPace < paceRange.minPace || clubPace >= paceRange.maxPace) {
+            return false;
+          }
+        }
+      }
       if (filterTerrain !== 'all' && club.terrain !== filterTerrain) return false;
       if (filterBeginner && !club.beginner_friendly) return false;
       if (filterDog && !club.dog_friendly) return false;
@@ -480,10 +524,12 @@ export default function Home() {
           !club.area.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [clubs, searchCity, filterPace, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, searchQuery]);
+  }, [clubs, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, searchQuery]);
 
   const clearFilters = () => {
     setFilterPace('all');
+    setFilterPaceKm('all');
+    setFilterDay('all');
     setFilterTerrain('all');
     setFilterBeginner(false);
     setFilterDog(false);
@@ -493,7 +539,7 @@ export default function Home() {
     setSearchQuery('');
   };
 
-  const hasActiveFilters = filterPace !== 'all' || filterTerrain !== 'all' || filterBeginner || filterDog || filterFemale || filterInfluencer || searchCity !== 'all' || searchQuery;
+  const hasActiveFilters = filterPace !== 'all' || filterPaceKm !== 'all' || filterDay !== 'all' || filterTerrain !== 'all' || filterBeginner || filterDog || filterFemale || filterInfluencer || searchCity !== 'all' || searchQuery;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -530,6 +576,24 @@ export default function Home() {
                   <Calendar className="w-4 h-4" />
                   This Week
                 </button>
+              </div>
+
+              {/* Quick Links */}
+              <div className="hidden md:flex items-center gap-1">
+                <Link
+                  href="/events"
+                  className="text-gray-500 hover:text-[#FF6B5B] px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  Events
+                </Link>
+                <Link
+                  href="/charity"
+                  className="text-gray-500 hover:text-[#FF6B5B] px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                >
+                  <HeartHandshake className="w-4 h-4" />
+                  Charity
+                </Link>
               </div>
 
               <Link
@@ -569,14 +633,23 @@ export default function Home() {
           {/* Filter Pills */}
           <div className="flex gap-2 flex-wrap">
             <select
-              value={filterPace}
-              onChange={(e) => setFilterPace(e.target.value)}
+              value={filterDay}
+              onChange={(e) => setFilterDay(e.target.value)}
               className="bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
             >
-              <option value="all">Any pace</option>
-              <option value="slow">Relaxed</option>
-              <option value="mixed">Mixed</option>
-              <option value="fast">Fast</option>
+              <option value="all">Any day</option>
+              {dayOrder.map(day => (
+                <option key={day} value={day}>{day}</option>
+              ))}
+            </select>
+            <select
+              value={filterPaceKm}
+              onChange={(e) => setFilterPaceKm(e.target.value)}
+              className="bg-gray-100 border border-gray-200 rounded-full px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
+            >
+              {paceRanges.map(range => (
+                <option key={range.value} value={range.value}>{range.label}</option>
+              ))}
             </select>
             <select
               value={filterTerrain}
