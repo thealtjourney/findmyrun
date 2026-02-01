@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays, HeartHandshake } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays } from 'lucide-react';
 import { seedClubs as fallbackClubs, cities, Club } from '@/lib/seed-data';
 
 // Helper to get/create visitor ID for attendance tracking
@@ -586,13 +586,6 @@ export default function Home() {
                 >
                   <CalendarDays className="w-4 h-4" />
                   Events
-                </Link>
-                <Link
-                  href="/charity"
-                  className="text-gray-500 hover:text-[#FF6B5B] px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                >
-                  <HeartHandshake className="w-4 h-4" />
-                  Charity
                 </Link>
               </div>
 
