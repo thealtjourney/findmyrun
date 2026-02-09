@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays, Map } from 'lucide-react';
-import { seedClubs as fallbackClubs, cities, Club } from '@/lib/seed-data';
+import { seedClubs as fallbackClubs, cities as featuredCities, Club } from '@/lib/seed-data';
+import { ukCities } from '@/lib/uk-cities';
 
 // Dynamic import for map (Leaflet needs window)
 const MapView = dynamic(() => import('./components/MapView'), {
@@ -542,8 +543,14 @@ export default function Home() {
       if (filterFemale && !club.female_only) return false;
       if (filterInfluencer && !club.influencer_led) return false;
       if (filterUnder18 && !club.under_18s) return false;
-      if (searchQuery && !club.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          !club.area.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = club.name.toLowerCase().includes(q);
+        const matchesArea = club.area.toLowerCase().includes(q);
+        const matchesCity = club.city.toLowerCase().includes(q);
+        const matchesDescription = club.description?.toLowerCase().includes(q);
+        if (!matchesName && !matchesArea && !matchesCity && !matchesDescription) return false;
+      }
       return true;
     });
   }, [clubs, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, filterUnder18, searchQuery]);
@@ -637,7 +644,7 @@ export default function Home() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search clubs or areas..."
+                placeholder="Search clubs, cities or areas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B] focus:border-transparent"
@@ -649,9 +656,26 @@ export default function Home() {
               className="bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B5B]"
             >
               <option value="all">All Cities</option>
-              {cities.map(city => (
-                <option key={city.slug} value={city.name}>{city.name}</option>
-              ))}
+              {(() => {
+                const citiesWithClubs = Array.from(new Set(clubs.map(c => c.city))).sort();
+                const otherCities = ukCities.filter(c => c !== 'Other' && !citiesWithClubs.includes(c));
+                return (
+                  <>
+                    {citiesWithClubs.length > 0 && (
+                      <optgroup label="Cities with clubs">
+                        {citiesWithClubs.map(city => (
+                          <option key={city} value={city}>{city} ({clubs.filter(c => c.city === city).length})</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="All UK cities">
+                      {otherCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </optgroup>
+                  </>
+                );
+              })()}
             </select>
           </div>
 
@@ -773,13 +797,33 @@ export default function Home() {
             {filteredClubs.length === 0 && (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🏃</div>
-                <p className="text-gray-500 mb-2">No clubs match your filters</p>
-                <button
-                  onClick={clearFilters}
-                  className="text-[#FF6B5B] text-sm font-medium hover:text-[#E55A4A]"
-                >
-                  Clear all filters
-                </button>
+                <p className="text-gray-900 font-bold mb-1">
+                  {searchCity !== 'all' ? `No clubs in ${searchCity} yet` : 'No clubs match your filters'}
+                </p>
+                <p className="text-gray-500 text-sm mb-4">
+                  {searchCity !== 'all'
+                    ? 'Know a club here? Help us grow the directory!'
+                    : 'Try adjusting your search or filters'}
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={clearFilters}
+                    className="text-[#FF6B5B] text-sm font-medium hover:text-[#E55A4A]"
+                  >
+                    Clear all filters
+                  </button>
+                  {searchCity !== 'all' && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <Link
+                        href="/submit"
+                        className="text-sm font-medium text-gray-900 hover:text-[#FF6B5B]"
+                      >
+                        Add a club →
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </>
@@ -791,18 +835,43 @@ export default function Home() {
         <div className="mt-16">
           <h2 className="text-xl font-black text-gray-900 mb-6">Browse by City</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {cities.map(city => (
-              <Link
-                key={city.slug}
-                href={`/${city.slug}`}
-                className="bg-white rounded-xl p-4 border border-gray-200 hover:border-[#FF6B5B] hover:shadow-md transition-all group"
-              >
-                <p className="font-bold text-gray-900 group-hover:text-[#FF6B5B] transition-colors">{city.name}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {clubs.filter(c => c.city === city.name).length} clubs
-                </p>
-              </Link>
-            ))}
+            {(() => {
+              // Build city list dynamically from actual clubs, merged with featured cities
+              const clubCityCounts = clubs.reduce((acc, c) => {
+                acc[c.city] = (acc[c.city] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
+              // Merge: featured cities (with descriptions for SEO pages) + any new cities from DB
+              const featuredSlugs = new Set(featuredCities.map(c => c.name));
+              const allCityCards = [
+                ...featuredCities.map(city => ({
+                  slug: city.slug,
+                  name: city.name,
+                  count: clubCityCounts[city.name] || 0,
+                })),
+                ...Object.keys(clubCityCounts)
+                  .filter(name => !featuredSlugs.has(name))
+                  .map(name => ({
+                    slug: name.toLowerCase().replace(/\s+/g, '-'),
+                    name,
+                    count: clubCityCounts[name],
+                  })),
+              ].sort((a, b) => b.count - a.count);
+
+              return allCityCards.map(city => (
+                <Link
+                  key={city.slug}
+                  href={`/${city.slug}`}
+                  className="bg-white rounded-xl p-4 border border-gray-200 hover:border-[#FF6B5B] hover:shadow-md transition-all group"
+                >
+                  <p className="font-bold text-gray-900 group-hover:text-[#FF6B5B] transition-colors">{city.name}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {city.count} club{city.count !== 1 ? 's' : ''}
+                  </p>
+                </Link>
+              ));
+            })()}
           </div>
         </div>
       </main>
