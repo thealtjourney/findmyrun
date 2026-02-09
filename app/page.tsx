@@ -2,8 +2,22 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays, Map } from 'lucide-react';
 import { seedClubs as fallbackClubs, cities, Club } from '@/lib/seed-data';
+
+// Dynamic import for map (Leaflet needs window)
+const MapView = dynamic(() => import('./components/MapView'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center" style={{ height: '65vh' }}>
+      <div className="text-center">
+        <div className="w-8 h-8 border-[3px] border-[#FFAB9F] border-t-[#FF6B5B] rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-400">Loading map...</p>
+      </div>
+    </div>
+  ),
+});
 
 // Helper to get/create visitor ID for attendance tracking
 function getVisitorId(): string {
@@ -165,6 +179,11 @@ function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () 
             <Dog className="w-3 h-3" /> Dogs OK
           </span>
         )}
+        {club.under_18s && (
+          <span className="text-xs bg-blue-100 text-blue-600 px-2.5 py-1 rounded-full border border-blue-200 flex items-center gap-1">
+            <Users className="w-3 h-3" /> Under 18s
+          </span>
+        )}
         {club.instagram && (
           <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full flex items-center gap-1">
             <Instagram className="w-3 h-3" />
@@ -289,6 +308,7 @@ function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate }: {
             {club.female_only && <span className="text-sm px-3 py-1.5 rounded-full bg-pink-100 text-pink-600 border border-pink-200">👩 Women only</span>}
             {club.beginner_friendly && <span className="text-sm px-3 py-1.5 rounded-full bg-[#FFF5F3] text-[#FF6B5B] border border-[#FFAB9F]">✓ Beginner friendly</span>}
             {club.dog_friendly && <span className="text-sm px-3 py-1.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">🐕 Dogs welcome</span>}
+            {club.under_18s && <span className="text-sm px-3 py-1.5 rounded-full bg-blue-100 text-blue-600 border border-blue-200">👥 Under 18s welcome</span>}
           </div>
 
           {club.description && <p className="text-gray-600 mb-5 leading-relaxed">{club.description}</p>}
@@ -452,7 +472,7 @@ function ThisWeekView({ clubs, onSelectClub }: { clubs: Club[]; onSelectClub: (c
 
 // Main App
 export default function Home() {
-  const [view, setView] = useState<'discover' | 'thisweek'>('discover');
+  const [view, setView] = useState<'discover' | 'thisweek' | 'map'>('discover');
   const [searchCity, setSearchCity] = useState('all');
   const [filterPace, setFilterPace] = useState('all');
   const [filterPaceKm, setFilterPaceKm] = useState('all');
@@ -462,6 +482,7 @@ export default function Home() {
   const [filterDog, setFilterDog] = useState(false);
   const [filterFemale, setFilterFemale] = useState(false);
   const [filterInfluencer, setFilterInfluencer] = useState(false);
+  const [filterUnder18, setFilterUnder18] = useState(false);
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
@@ -520,11 +541,12 @@ export default function Home() {
       if (filterDog && !club.dog_friendly) return false;
       if (filterFemale && !club.female_only) return false;
       if (filterInfluencer && !club.influencer_led) return false;
+      if (filterUnder18 && !club.under_18s) return false;
       if (searchQuery && !club.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
           !club.area.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [clubs, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, searchQuery]);
+  }, [clubs, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, filterUnder18, searchQuery]);
 
   const clearFilters = () => {
     setFilterPace('all');
@@ -535,11 +557,12 @@ export default function Home() {
     setFilterDog(false);
     setFilterFemale(false);
     setFilterInfluencer(false);
+    setFilterUnder18(false);
     setSearchCity('all');
     setSearchQuery('');
   };
 
-  const hasActiveFilters = filterPace !== 'all' || filterPaceKm !== 'all' || filterDay !== 'all' || filterTerrain !== 'all' || filterBeginner || filterDog || filterFemale || filterInfluencer || searchCity !== 'all' || searchQuery;
+  const hasActiveFilters = filterPace !== 'all' || filterPaceKm !== 'all' || filterDay !== 'all' || filterTerrain !== 'all' || filterBeginner || filterDog || filterFemale || filterInfluencer || filterUnder18 || searchCity !== 'all' || searchQuery;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -575,6 +598,15 @@ export default function Home() {
                 >
                   <Calendar className="w-4 h-4" />
                   This Week
+                </button>
+                <button
+                  onClick={() => setView('map')}
+                  className={`px-3 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${
+                    view === 'map' ? 'bg-[#FF6B5B] text-white shadow-md' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Map className="w-4 h-4" />
+                  Map
                 </button>
               </div>
 
@@ -689,13 +721,28 @@ export default function Home() {
               <Dog className="w-3.5 h-3.5" />
               Dogs OK
             </button>
+            <button
+              onClick={() => setFilterUnder18(!filterUnder18)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all flex items-center gap-1.5 ${
+                filterUnder18 ? 'bg-blue-100 border-blue-300 text-blue-600' : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Under 18s
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-3xl mx-auto px-4 py-6 pb-28">
-        {view === 'discover' ? (
+        {view === 'map' ? (
+          <MapView
+            clubs={filteredClubs}
+            onSelectClub={setSelectedClub}
+            attendanceCounts={attendanceCounts}
+          />
+        ) : view === 'discover' ? (
           <>
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-500">

@@ -20,6 +20,7 @@ export interface Club {
   terrain: 'road' | 'trail' | 'mixed';
   female_only: boolean;
   influencer_led: boolean;  // Run clubs started by influencers/with big social following
+  under_18s?: boolean;      // Whether club caters for under-18s
   // Existing fields
   beginner_friendly: boolean;
   dog_friendly: boolean;

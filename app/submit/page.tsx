@@ -425,6 +425,15 @@ export default function SubmitClub() {
                   />
                   <span className="text-gray-700">Women only</span>
                 </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="under_18s"
+                    value="yes"
+                    className="w-5 h-5 rounded border-gray-300 text-[#FF6B5B] focus:ring-[#FF6B5B]"
+                  />
+                  <span className="text-gray-700">Under 18s welcome</span>
+                </label>
               </div>
             </div>
 
