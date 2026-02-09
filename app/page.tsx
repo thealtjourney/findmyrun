@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, CalendarDays, Map } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, Map } from 'lucide-react';
 import { seedClubs as fallbackClubs, cities as featuredCities, Club } from '@/lib/seed-data';
 import { ukCities } from '@/lib/uk-cities';
 
@@ -615,17 +615,6 @@ export default function Home() {
                   <Map className="w-4 h-4" />
                   Map
                 </button>
-              </div>
-
-              {/* Quick Links */}
-              <div className="hidden md:flex items-center gap-1">
-                <Link
-                  href="/events"
-                  className="text-gray-500 hover:text-[#FF6B5B] px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                >
-                  <CalendarDays className="w-4 h-4" />
-                  Events
-                </Link>
               </div>
 
               <Link
