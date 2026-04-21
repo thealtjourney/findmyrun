@@ -9,13 +9,13 @@ export const maxDuration = 60;
 
 // ----- Types ---------------------------------------------------------------
 
-export interface LinkStatus {
+interface LinkStatus {
   ok: boolean;
   url: string;
   reason?: string;
 }
 
-export interface ClubLinkCheck {
+interface ClubLinkCheck {
   name: string;
   city: string;
   instagram: LinkStatus | null;

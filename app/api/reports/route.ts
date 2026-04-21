@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendClubReportEmail } from '@/lib/email';
 
 // Kinds of issue users can flag. Keep in sync with the client component.
-export const REPORT_REASONS = [
+const REPORT_REASONS = [
   'club_inactive',
   'wrong_meeting_info',
   'wrong_location',
