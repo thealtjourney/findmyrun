@@ -468,3 +468,163 @@ export async function sendOwnerLoginEmail(
     `,
   });
 }
+
+// ----------------------------------------------------------------------------
+// Weekly broken-links report (triggered by the check-links cron).
+// ----------------------------------------------------------------------------
+
+export interface BrokenLinkItem {
+  name: string;
+  city: string;
+  instagram: { ok: boolean; url: string; reason?: string } | null;
+  website: { ok: boolean; url: string; reason?: string } | null;
+}
+
+export async function sendBrokenLinksReport(broken: BrokenLinkItem[]) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    throw new Error('ADMIN_EMAIL not configured');
+  }
+  if (broken.length === 0) return;
+
+  // Group by city for readability.
+  const byCity = new Map<string, BrokenLinkItem[]>();
+  for (const b of broken) {
+    const list = byCity.get(b.city) ?? [];
+    list.push(b);
+    byCity.set(b.city, list);
+  }
+
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const cityBlocks = Array.from(byCity.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([city, clubs]) => {
+      const items = clubs
+        .map((c) => {
+          const bits: string[] = [];
+          if (c.instagram && !c.instagram.ok) {
+            bits.push(
+              `<li style="color: #6b7280;">Instagram — <a href="${escape(c.instagram.url)}" style="color: #FF6B5B;">${escape(c.instagram.url)}</a> <span style="color: #9ca3af;">(${escape(c.instagram.reason ?? 'broken')})</span></li>`
+            );
+          }
+          if (c.website && !c.website.ok) {
+            bits.push(
+              `<li style="color: #6b7280;">Website — <a href="${escape(c.website.url)}" style="color: #FF6B5B;">${escape(c.website.url)}</a> <span style="color: #9ca3af;">(${escape(c.website.reason ?? 'broken')})</span></li>`
+            );
+          }
+          return `
+            <li style="margin-bottom: 12px;">
+              <strong style="color: #1f2937;">${escape(c.name)}</strong>
+              <ul style="margin: 4px 0 0; padding-left: 18px; font-size: 13px;">${bits.join('')}</ul>
+            </li>
+          `;
+        })
+        .join('');
+      return `
+        <h3 style="color: #1f2937; margin: 24px 0 8px; font-size: 15px; font-weight: 700;">${escape(city)}</h3>
+        <ul style="margin: 0; padding-left: 20px;">${items}</ul>
+      `;
+    })
+    .join('');
+
+  const { error } = await resend.emails.send({
+    from: 'Find My Run <hello@findmyrun.club>',
+    to: adminEmail,
+    subject: `🔗 ${broken.length} club${broken.length === 1 ? '' : 's'} with broken links`,
+    html: `<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; margin: 0; padding: 20px;">
+    <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <div style="background: linear-gradient(135deg, #FF6B5B 0%, #FFAB9F 100%); padding: 28px 32px;">
+        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 800;">Weekly link check</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 6px 0 0; font-size: 14px;">
+          ${broken.length} club${broken.length === 1 ? ' has' : 's have'} links that need attention.
+        </p>
+      </div>
+      <div style="padding: 24px 32px 32px;">
+        ${cityBlocks}
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 28px; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+          Run weekly by Vercel Cron. "Broken" means a non-2xx HTTP response, timeout, or network error.
+          Instagram sometimes flags bot traffic with a 401/403 — real breakage usually shows as a 404.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send broken-links report: ${error.message}`);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// User-submitted issue report on a club listing.
+// ----------------------------------------------------------------------------
+
+const REPORT_REASON_LABELS: Record<string, string> = {
+  club_inactive: 'Club is no longer active',
+  wrong_meeting_info: 'Wrong meeting day / time',
+  wrong_location: 'Wrong location or meeting point',
+  broken_link: 'Broken link (Instagram / website)',
+  inappropriate: 'Inappropriate content',
+  other: 'Other',
+};
+
+export async function sendClubReportEmail(report: {
+  clubName: string;
+  clubCity: string;
+  reason: string;
+  note?: string;
+}) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) throw new Error('ADMIN_EMAIL not configured');
+
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const label = REPORT_REASON_LABELS[report.reason] ?? report.reason;
+  const noteHtml = report.note
+    ? `<div style="margin-top: 16px;">
+         <p style="margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Note from reporter</p>
+         <p style="margin: 0; color: #1f2937; line-height: 1.5; white-space: pre-wrap;">${escape(report.note)}</p>
+       </div>`
+    : '';
+
+  const { error } = await resend.emails.send({
+    from: 'Find My Run <hello@findmyrun.club>',
+    to: adminEmail,
+    subject: `⚠️ Issue reported on ${report.clubName} (${report.clubCity})`,
+    html: `<!DOCTYPE html>
+<html>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; margin: 0; padding: 20px;">
+    <div style="max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <div style="background: linear-gradient(135deg, #FF6B5B 0%, #FFAB9F 100%); padding: 24px 28px;">
+        <h1 style="color: white; margin: 0; font-size: 20px; font-weight: 800;">Club issue reported</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 6px 0 0; font-size: 14px;">
+          A visitor flagged a problem with a club listing.
+        </p>
+      </div>
+      <div style="padding: 24px 28px;">
+        <h2 style="color: #1f2937; margin: 0 0 4px; font-size: 18px; font-weight: 700;">${escape(report.clubName)}</h2>
+        <p style="color: #6b7280; margin: 0 0 20px; font-size: 13px;">📍 ${escape(report.clubCity)}</p>
+        <div style="background: #FFF5F3; border-left: 3px solid #FF6B5B; padding: 12px 16px; border-radius: 8px;">
+          <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: #FF6B5B; text-transform: uppercase;">Reason</p>
+          <p style="margin: 0; color: #1f2937; font-weight: 600;">${escape(label)}</p>
+        </div>
+        ${noteHtml}
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 24px; border-top: 1px solid #f3f4f6; padding-top: 14px;">
+          Reports are anonymous — we don't collect the reporter's identity unless they volunteer it in the note.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>`,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send club-report email: ${error.message}`);
+  }
+}

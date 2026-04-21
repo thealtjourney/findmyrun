@@ -7,6 +7,7 @@ import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Chec
 import { seedClubs as fallbackClubs, cities as featuredCities, Club } from '@/lib/seed-data';
 import { ukCities } from '@/lib/uk-cities';
 import { citySlug, clubSlugsForCity } from '@/lib/slug';
+import { ReportIssueButton } from '@/app/components/ReportIssueButton';
 
 // Dynamic import for map (Leaflet needs window)
 const MapView = dynamic(() => import('./components/MapView'), {
@@ -437,6 +438,11 @@ function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate, clubPa
             <button className="px-4 py-3.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
               <Heart className="w-5 h-5 text-gray-400" />
             </button>
+          </div>
+
+          {/* Report an issue — subtle footer action */}
+          <div className="pt-3 text-center">
+            <ReportIssueButton clubName={club.name} clubCity={club.city} variant="link" />
           </div>
         </div>
       </div>

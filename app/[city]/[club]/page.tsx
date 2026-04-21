@@ -24,6 +24,7 @@ import {
   findClubBySlug,
   allClubRouteParams,
 } from '@/lib/slug';
+import { ReportIssueButton } from '@/app/components/ReportIssueButton';
 
 // ---------------------------------------------------------------------------
 // Static generation — one page per club, across every city we have data for.
@@ -465,6 +466,11 @@ export default function ClubPage({
             <p className="text-sm text-gray-600">{cityMeta.description}</p>
           </div>
         )}
+
+        {/* Report an issue — subtle footer action */}
+        <div className="text-center mb-10">
+          <ReportIssueButton clubName={club.name} clubCity={club.city} variant="link" />
+        </div>
       </main>
 
       {/* Footer */}
