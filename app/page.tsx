@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, Map } from 'lucide-react';
+import { Search, MapPin, Calendar, Clock, X, Heart, Dog, Coffee, Instagram, Check, Plus, ExternalLink, Sparkles, User, Users, Key, Map, Navigation, ArrowRight } from 'lucide-react';
 import { seedClubs as fallbackClubs, cities as featuredCities, Club } from '@/lib/seed-data';
 import { ukCities } from '@/lib/uk-cities';
+import { citySlug, clubSlugsForCity } from '@/lib/slug';
 
 // Dynamic import for map (Leaflet needs window)
 const MapView = dynamic(() => import('./components/MapView'), {
@@ -29,6 +30,31 @@ function getVisitorId(): string {
     localStorage.setItem('fmr_visitor_id', visitorId);
   }
   return visitorId;
+}
+
+// Haversine distance in km between two lat/lng pairs
+function distanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Format km → either "1.2 km" or "750 m"
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 10) return `${km.toFixed(1)} km`;
+  return `${Math.round(km)} km`;
 }
 
 // Helper to get next session date for a club
@@ -112,7 +138,7 @@ function getPaceFromClub(club: Club): number | null {
 }
 
 // Club Card Component
-function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () => void; attendanceCount?: number }) {
+function ClubCard({ club, onClick, attendanceCount, distanceKm: dist }: { club: Club; onClick: () => void; attendanceCount?: number; distanceKm?: number }) {
   const pace = paceConfig[club.pace];
   return (
     <button
@@ -148,6 +174,11 @@ function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () 
       <p className="text-sm text-gray-500 flex items-center gap-1.5 mb-3">
         <MapPin className="w-3.5 h-3.5 text-[#FF6B5B]" />
         {club.area}, {club.city}
+        {typeof dist === 'number' && (
+          <span className="ml-auto text-xs bg-[#FFF5F3] text-[#FF6B5B] px-2 py-0.5 rounded-full font-semibold">
+            {formatDistance(dist)}
+          </span>
+        )}
       </p>
 
       <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
@@ -196,11 +227,12 @@ function ClubCard({ club, onClick, attendanceCount }: { club: Club; onClick: () 
 }
 
 // Club Detail Modal
-function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate }: {
+function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate, clubPageHref }: {
   club: Club;
   onClose: () => void;
   attendanceCount?: number;
   onAttendanceUpdate?: () => void;
+  clubPageHref?: string;
 }) {
   const pace = paceConfig[club.pace];
   const [isGoing, setIsGoing] = useState(false);
@@ -352,9 +384,22 @@ function ClubDetail({ club, onClose, attendanceCount, onAttendanceUpdate }: {
             )}
           </div>
 
+          {/* View full club page */}
+          {clubPageHref && (
+            <div className="border-t border-gray-100 pt-4 mb-3">
+              <Link
+                href={clubPageHref}
+                className="flex items-center justify-center gap-2 text-[#FF6B5B] hover:text-[#E55A4A] text-sm font-semibold transition-colors"
+              >
+                View full club page
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+
           {/* Claim this club link */}
           {club.id && (
-            <div className="border-t border-gray-100 pt-4 mb-4">
+            <div className={`${clubPageHref ? '' : 'border-t border-gray-100 pt-4'} mb-4`}>
               <Link
                 href={`/claim/${club.id}`}
                 className="flex items-center justify-center gap-2 text-gray-500 hover:text-[#FF6B5B] text-sm transition-colors"
@@ -488,6 +533,40 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [attendanceCounts, setAttendanceCounts] = useState<Record<string, number>>({});
   const [clubs, setClubs] = useState<Club[]>(fallbackClubs);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  // Geolocation: request user's position, then sort clubs by distance
+  const handleLocate = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      setLocationError('Your browser does not support location.');
+      return;
+    }
+    setLocating(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setSearchCity('all'); // show clubs from everywhere, sorted by distance
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        setLocationError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location permission denied. You can still search by city.'
+            : 'Could not get your location. Try again or pick a city.'
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60_000 }
+    );
+  }, []);
+
+  const clearLocation = useCallback(() => {
+    setUserLoc(null);
+    setLocationError(null);
+  }, []);
 
   // Fetch clubs from database
   const fetchClubs = useCallback(async () => {
@@ -522,8 +601,18 @@ export default function Home() {
     fetchAttendance();
   }, [fetchClubs, fetchAttendance]);
 
+  // Distances from the user's location to every club. null when location not set.
+  const clubDistances = useMemo(() => {
+    if (!userLoc) return null;
+    const map: Record<string, number> = {};
+    for (const c of clubs) {
+      map[c.name] = distanceKm(userLoc.lat, userLoc.lng, c.lat, c.lng);
+    }
+    return map;
+  }, [clubs, userLoc]);
+
   const filteredClubs = useMemo(() => {
-    return clubs.filter(club => {
+    const filtered = clubs.filter(club => {
       if (searchCity !== 'all' && club.city.toLowerCase() !== searchCity.toLowerCase()) return false;
       if (filterPace !== 'all' && club.pace !== filterPace) return false;
       if (filterDay !== 'all' && club.day !== filterDay) return false;
@@ -553,7 +642,14 @@ export default function Home() {
       }
       return true;
     });
-  }, [clubs, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, filterUnder18, searchQuery]);
+
+    // When location is set, sort by distance (ascending)
+    if (clubDistances) {
+      filtered.sort((a, b) => (clubDistances[a.name] ?? Infinity) - (clubDistances[b.name] ?? Infinity));
+    }
+
+    return filtered;
+  }, [clubs, clubDistances, searchCity, filterPace, filterDay, filterPaceKm, filterTerrain, filterBeginner, filterDog, filterFemale, filterInfluencer, filterUnder18, searchQuery]);
 
   const clearFilters = () => {
     setFilterPace('all');
@@ -670,6 +766,26 @@ export default function Home() {
 
           {/* Filter Pills */}
           <div className="flex gap-2 flex-wrap">
+            {userLoc ? (
+              <button
+                onClick={clearLocation}
+                className="px-3 py-1.5 rounded-full text-sm font-medium border transition-all flex items-center gap-1.5 bg-[#FFF5F3] border-[#FFAB9F] text-[#FF6B5B]"
+                title="Clear location and show all clubs"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                Near you
+                <span className="ml-1 text-[#FF6B5B]/60 hover:text-[#FF6B5B]">×</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleLocate}
+                disabled={locating}
+                className="px-3 py-1.5 rounded-full text-sm font-medium border transition-all flex items-center gap-1.5 border-gray-200 text-gray-600 hover:border-gray-300 bg-white disabled:opacity-60"
+              >
+                <Navigation className={`w-3.5 h-3.5 ${locating ? 'animate-pulse' : ''}`} />
+                {locating ? 'Locating…' : 'Near me'}
+              </button>
+            )}
             <select
               value={filterDay}
               onChange={(e) => setFilterDay(e.target.value)}
@@ -744,6 +860,19 @@ export default function Home() {
               Under 18s
             </button>
           </div>
+
+          {locationError && (
+            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-start justify-between gap-2">
+              <span>{locationError}</span>
+              <button
+                onClick={() => setLocationError(null)}
+                className="text-amber-700/70 hover:text-amber-900 font-bold"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -779,6 +908,7 @@ export default function Home() {
                   club={club}
                   onClick={() => setSelectedClub(club)}
                   attendanceCount={attendanceCounts[club.name]}
+                  distanceKm={clubDistances?.[club.name]}
                 />
               ))}
             </div>
@@ -879,14 +1009,22 @@ export default function Home() {
       </div>
 
       {/* Modal */}
-      {selectedClub && (
-        <ClubDetail
-          club={selectedClub}
-          onClose={() => setSelectedClub(null)}
-          attendanceCount={attendanceCounts[selectedClub.name]}
-          onAttendanceUpdate={fetchAttendance}
-        />
-      )}
+      {selectedClub && (() => {
+        const cityMap = clubSlugsForCity(clubs, selectedClub.city);
+        const slug = cityMap.get(selectedClub.name);
+        const href = slug
+          ? `/${citySlug(selectedClub.city)}/${slug}`
+          : undefined;
+        return (
+          <ClubDetail
+            club={selectedClub}
+            onClose={() => setSelectedClub(null)}
+            attendanceCount={attendanceCounts[selectedClub.name]}
+            onAttendanceUpdate={fetchAttendance}
+            clubPageHref={href}
+          />
+        );
+      })()}
     </div>
   );
 }
